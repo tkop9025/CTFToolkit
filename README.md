@@ -1,3 +1,8 @@
+# Personal CTF Toolkit
+Stuff I find myself doing a lot in ctfs. I figured, why not automate.
+
+warning: increadibly noobish code
+
 ### crypto_utils.py
 
 A collection of lightweight Python functions to streamline common encoding and
