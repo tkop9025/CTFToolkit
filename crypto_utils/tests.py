@@ -1,5 +1,4 @@
 import crypto_utils
-import web_utils as wu
 
 
 # Base64

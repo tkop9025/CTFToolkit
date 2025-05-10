@@ -1,0 +1,19 @@
+[build-system]
+requires      = ["setuptools>=61", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name            = "ctftoolkit"
+version         = "0.1.0"
+description     = "Collection of CTF helper libraries"
+authors         = [{ name = "Your Name", email = "you@example.com" }]
+requires-python = ">=3.9"
+dependencies    = []
+
+[tool.setuptools]
+packages = ["canary_tool", "crypto_utils", "web_utils"]
+
+[tool.setuptools.package-dir]
+canary_tool  = "canary-tool/canary_tool"
+crypto_utils = "crypto_utils"
+web_utils    = "web_utils"
