@@ -3,6 +3,7 @@ import subprocess
 import time
 from typing import Sequence
 import serial
+import ssl
 
 
 class Target:
@@ -53,13 +54,35 @@ class ExecTarget(Target):
             return False
 
     def close(self):
-        self.proc.terminate()
+        if self.proc.poll() is None:
+            self.proc.terminate()
+        self.proc.wait(timeout=1)
 
 
 class TcpTarget(Target):
     def __init__(self, host: str, port: int):
         self.addr = (host, port)
         self.sock = socket.create_connection(self.addr)
+
+    def send(self, data: bytes, timeout: float) -> bool:
+        try:
+            self.sock.sendall(data)
+            self.sock.settimeout(timeout)
+            _ = self.sock.recv(1)
+            return True
+        except (socket.timeout, ConnectionResetError, BrokenPipeError):
+            return False
+
+    def close(self):
+        self.sock.close()
+
+
+class TlsTarget(TcpTarget):
+    def __init__(self, host: str, port: int):
+        self.addr = (host, port)
+        self.sock = socket.create_connection(self.addr)
+        ctx = ssl.create_default_context()
+        self.sock = ctx.wrap_socket(self.sock, server_hostname=host)
 
     def send(self, data: bytes, timeout: float) -> bool:
         try:
@@ -83,7 +106,7 @@ class SerialTarget(Target):
             self.ser.write(data)
             self.ser.flush()
             time.sleep(timeout)
-            # Simple rule: if port is still open, assume alive
+
             return self.ser.is_open
         except serial.SerialException:
             return False
@@ -92,12 +115,36 @@ class SerialTarget(Target):
         self.ser.close()
 
 
+class UdpTarget(Target):
+    def __init__(self, host, port):
+        self.addr = (host, port)
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+
+    def send(self, data, timeout):
+        self.sock.sendto(data, self.addr)
+        self.sock.settimeout(timeout)
+        try:
+            self.sock.recvfrom(1)
+            return True
+        except socket.timeout:
+            return False
+
+    def close(self):
+        self.sock.close()
+
+
 def make_target(args) -> Target:
     if args.unix:
         return UnixSocketTarget(args.unix)
     if args.tcp:
         host, port = args.tcp.split(":")
         return TcpTarget(host, int(port))
+    if args.tls:
+        host, port = args.tls.split(":")
+        return TlsTarget(host, int(port))
+    if args.udp:
+        host, port = args.udp.split(":")
+        return UdpTarget(host, int(port))
     if args.exec:
         return ExecTarget(args.exec)
     if args.serial:

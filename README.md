@@ -1,7 +1,7 @@
 # Personal CTF Toolkit
 Stuff I find myself doing a lot in ctfs. I figured, why not automate.
 
-warning: incredibly noobish code
+warning: questionable quality
 
 ### crypto_utils.py
 

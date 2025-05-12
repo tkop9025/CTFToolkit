@@ -12,12 +12,13 @@ def find_offset_binary(tgt, max_probe=4096, pad=b"A", timeout=0.2):
     # 1.   find ANY crashing length with exponential back‑off
     good = 0
     bad = 1
-    while bad <= max_probe and tgt.send(pad * bad, timeout):
-        good = bad  # still survives
-        bad *= 2  # double until it dies
-
-    if bad > max_probe:
-        raise RuntimeError("No crash seen up to max_probe")
+    while tgt.send(pad * bad, timeout):
+        good = bad
+        bad *= 2
+        if bad > max_probe:
+            bad = max_probe
+            if tgt.send(pad * bad, timeout):
+                raise RuntimeError("No crash seen up to max_probe")
 
     # 2.   binary search between (good, bad)
     while bad - good > 1:

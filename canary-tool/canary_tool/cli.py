@@ -29,6 +29,8 @@ def build_parser() -> argparse.ArgumentParser:
     g = p.add_mutually_exclusive_group(required=True)
     g.add_argument("--unix", help="Unix‑domain socket path")
     g.add_argument("--tcp", help="HOST:PORT of remote service")
+    g.add_argument("--udp", help="HOST:PORT of remote service")
+    g.add_argument("--tls", help="HOST:PORT of remote service")
     g.add_argument(
         "--exec",
         nargs=argparse.REMAINDER,
