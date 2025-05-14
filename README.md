@@ -24,7 +24,7 @@ and general cybersecurity work.
 
 
 ### web_utils
-crappy unfinished requests wrapper :)
+currently a crappy unfinished requests wrapper 
 
 
 ### canary-tool (stack‑canary helper)
