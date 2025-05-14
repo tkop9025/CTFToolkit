@@ -25,6 +25,7 @@ and general cybersecurity work.
 
 ### web_utils
 currently a crappy unfinished requests wrapper 
+looking into burp api
 
 
 ### canary-tool (stack‑canary helper)
@@ -49,3 +50,4 @@ canary-tool --tcp chall.pwn.xyz:31337 --auto_offset --canary-len 8
 
 ### rop-tool (barely started)
 oh boy I'm ropping so hard I'm going to rop all over your binary.
+looking to parse ropper and ROPgadet outputs
