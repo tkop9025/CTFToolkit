@@ -8,12 +8,13 @@ version         = "0.1.0"
 description     = "Collection of CTF helper libraries"
 authors         = [{ name = "Your Name", email = "you@example.com" }]
 requires-python = ">=3.9"
-dependencies    = []
+dependencies    = ["pyserial"]
 
 [tool.setuptools]
-packages = ["canary_tool", "crypto_utils", "web_utils"]
+packages = ["canary_tool", "crypto_utils", "web_utils", "rop_tool"]
 
 [tool.setuptools.package-dir]
-canary_tool  = "canary-tool/canary_tool"
+canary_tool  = "canary_tool"
 crypto_utils = "crypto_utils"
 web_utils    = "web_utils"
+rop_tool     = "rop_tool"
