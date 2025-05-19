@@ -1,9 +1,3 @@
-# tests/test_offset_canary.py
-# ---------------------------------------------------------------
-# Unit level mocks and assertions for the offset finder and
-# canary brute force loops.  They use *no* real sockets or
-# subprocesses—so they run in < 50 ms.
-
 import pytest
 from hypothesis import given, strategies as st
 
@@ -11,7 +5,6 @@ from canary_tool.discover import find_offset_binary
 from canary_tool.canary import brute_force_canary
 
 
-# ── Mock helpers ────────────────────────────────────────────────
 class DummyTarget:
     """
     Pretends to be a service that crashes when it receives

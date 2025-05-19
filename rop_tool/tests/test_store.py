@@ -1,8 +1,3 @@
-"""
-Unit-tests for store.py
-Requires: pytest
-"""
-
 from rop_tool.gadgets import Gadget
 from rop_tool.store import GadgetStore
 

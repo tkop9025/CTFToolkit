@@ -9,9 +9,11 @@ import ssl
 class Target:
     def send(self, data: bytes, timeout: float) -> bool:
         """return true if program survived, false if it crashed"""
+        raise NotImplementedError("implement me grrrr")
 
     def close(self):
         """close connection"""
+        raise NotImplementedError("implement me grrrr")
 
 
 class UnixSocketTarget(Target):
@@ -34,9 +36,15 @@ class UnixSocketTarget(Target):
 
 
 class ExecTarget(Target):
-    def __init__(self, argv: Sequence[str]):
+    def __init__(self, argv: Sequence[str] | None):
+        if not argv:
+            raise ValueError("--exec requires at least a program name")
+        self._argv = list(argv)
+        self._spawn()
+
+    def _spawn(self):
         self.proc = subprocess.Popen(
-            list(argv),
+            self._argv,
             stdin=subprocess.PIPE,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
@@ -44,8 +52,12 @@ class ExecTarget(Target):
         if self.proc.stdin is None:
             raise RuntimeError("stdin PIPE failed")
 
-    def send(self, data, timeout):
+    def send(self, data: bytes, timeout: float) -> bool:
+        # respawn if previous run crashed
+        if self.proc.poll() is not None:
+            self._spawn()
         try:
+            assert self.proc.stdin is not None
             self.proc.stdin.write(data)
             self.proc.stdin.flush()
             time.sleep(timeout)
@@ -64,13 +76,21 @@ class TcpTarget(Target):
         self.addr = (host, port)
         self.sock = socket.create_connection(self.addr)
 
+    def _reopen(self):
+        self.sock.close()
+        self.sock = socket.create_connection(self.addr)
+
     def send(self, data: bytes, timeout: float) -> bool:
         try:
             self.sock.sendall(data)
             self.sock.settimeout(timeout)
-            _ = self.sock.recv(1)
+            self.sock.recv(1)
             return True
         except (socket.timeout, ConnectionResetError, BrokenPipeError):
+            try:
+                self._reopen()
+            except OSError:
+                pass
             return False
 
     def close(self):
@@ -78,19 +98,22 @@ class TcpTarget(Target):
 
 
 class TlsTarget(TcpTarget):
-    def __init__(self, host: str, port: int):
-        self.addr = (host, port)
-        self.sock = socket.create_connection(self.addr)
-        ctx = ssl.create_default_context()
+    def __init__(self, host: str, port: int, *, insecure: bool = False):
+        super().__init__(host, port)
+        ctx = (
+            ssl._create_unverified_context()
+            if insecure
+            else ssl.create_default_context()
+        )
         self.sock = ctx.wrap_socket(self.sock, server_hostname=host)
 
     def send(self, data: bytes, timeout: float) -> bool:
         try:
             self.sock.sendall(data)
             self.sock.settimeout(timeout)
-            _ = self.sock.recv(1)
+            self.sock.recv(1)
             return True
-        except (socket.timeout, ConnectionResetError, BrokenPipeError):
+        except (socket.timeout, ConnectionResetError, BrokenPipeError, ssl.SSLError):
             return False
 
     def close(self):
@@ -98,16 +121,18 @@ class TlsTarget(TcpTarget):
 
 
 class SerialTarget(Target):
-    def __init__(self, dev: str, baud: int = 115_200):
+    def __init__(self, dev: str, baud: int = 115_200, *, require_echo: bool = False):
         self.ser = serial.Serial(dev, baudrate=baud, timeout=0)
+        self.require_echo = require_echo
 
     def send(self, data: bytes, timeout: float) -> bool:
         try:
             self.ser.write(data)
             self.ser.flush()
             time.sleep(timeout)
-
-            return self.ser.is_open
+            if not self.require_echo:
+                return self.ser.is_open
+            return self.ser.in_waiting > 0
         except serial.SerialException:
             return False
 
@@ -120,7 +145,18 @@ class UdpTarget(Target):
         self.addr = (host, port)
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
-    def send(self, data, timeout):
+    def _drain(self):
+        self.sock.setblocking(False)
+        try:
+            while self.sock.recvfrom(4096):
+                pass
+        except BlockingIOError:
+            pass
+        finally:
+            self.sock.setblocking(True)
+
+    def send(self, data: bytes, timeout: float) -> bool:
+        self._drain()
         self.sock.sendto(data, self.addr)
         self.sock.settimeout(timeout)
         try:
